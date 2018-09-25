@@ -22,6 +22,7 @@ export class ElasticMetricAggCtrl {
     const metricAggs = $scope.target.metrics;
     $scope.metricAggTypes = queryDef.getMetricAggTypes($scope.esVersion);
     $scope.extendedStats = queryDef.extendedStats;
+    $scope.matrixStats = queryDef.matrixStats;
     $scope.pipelineAggOptions = [];
     $scope.modelSettingsValues = {};
 
@@ -87,6 +88,26 @@ export class ElasticMetricAggCtrl {
             (memo, val, key) => {
               if (val) {
                 const def = _.find($scope.extendedStats, { value: key });
+                memo.push(def.text);
+              }
+              return memo;
+            },
+            []
+          );
+
+          $scope.settingsLinkText = 'Stats: ' + stats.join(', ');
+          break;
+        }
+        case 'matrix_stats': {
+          if (_.keys($scope.agg.meta).length === 0) {
+            $scope.agg.meta.correlation = true;
+          }
+
+          const stats = _.reduce(
+            $scope.agg.meta,
+            (memo, val, key) => {
+              if (val) {
+                const def = _.find($scope.matrixStats, { value: key });
                 memo.push(def.text);
               }
               return memo;
