@@ -9,7 +9,7 @@ export class ElasticResponse {
   }
 
   processMetrics(esAgg, target, seriesList, props) {
-    let metric, y, i, newSeries, bucket, value;
+    let metric, y, i, j, newSeries, bucket, value;
 
     for (y = 0; y < target.metrics.length; y++) {
       metric = target.metrics[y];
@@ -81,6 +81,60 @@ export class ElasticResponse {
             seriesList.push(newSeries);
           }
 
+          break;
+        }
+        case 'matrix_stats': {
+          if (esAgg.buckets.length === 0) {
+            break;
+          }
+          if ('fields' in metric.settings) {
+            const firstFieldName = metric.settings.fields[0];
+            const allFieldsNames = metric.settings.fields;
+
+            for (const statName in metric.meta) {
+              if (statName === 'correlation') {
+                for (const fieldName in allFieldsNames) {
+                  newSeries = {
+                    datapoints: [],
+                    metric: 'cor' + fieldName,
+                    props: props,
+                    field: metric.field,
+                  };
+                  for (i = 0; i < esAgg.buckets.length; i++) {
+                    bucket = esAgg.buckets[i];
+                    const stats = bucket[metric.id].fields;
+                    for (j = 0; j < stats.length; j++) {
+                      if (stats[j].name === firstFieldName) {
+                        newSeries.datapoints.push([stats[j][statName], bucket.key]);
+                      } else {
+                        continue;
+                      }
+                    }
+                  }
+                  seriesList.push(newSeries);
+                }
+              } else {
+                newSeries = {
+                  datapoints: [],
+                  metric: statName,
+                  props: props,
+                  field: metric.field,
+                };
+                for (i = 0; i < esAgg.buckets.length; i++) {
+                  bucket = esAgg.buckets[i];
+                  const stats = bucket[metric.id].fields;
+                  for (j = 0; j < stats.length; j++) {
+                    if (stats[j].name === firstFieldName) {
+                      newSeries.datapoints.push([stats[j][statName], bucket.key]);
+                    } else {
+                      continue;
+                    }
+                  }
+                }
+                seriesList.push(newSeries);
+              }
+            }
+          }
           break;
         }
         default: {

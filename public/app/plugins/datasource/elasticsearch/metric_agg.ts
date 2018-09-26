@@ -99,6 +99,7 @@ export class ElasticMetricAggCtrl {
           break;
         }
         case 'matrix_stats': {
+          delete $scope.agg.field;
           if (_.keys($scope.agg.meta).length === 0) {
             $scope.agg.meta.correlation = true;
           }

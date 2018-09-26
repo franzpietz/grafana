@@ -40,9 +40,7 @@ export const metricAggTypes = [
   {
     text: 'Matrix Stats',
     value: 'matrix_stats',
-    requiresField: true,
-    supportsMissing: true,
-    supportsInlineScript: true,
+    requiresField: false,
   },
   {
     text: 'Percentiles',
