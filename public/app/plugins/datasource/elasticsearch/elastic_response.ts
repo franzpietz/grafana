@@ -9,7 +9,7 @@ export class ElasticResponse {
   }
 
   processMetrics(esAgg, target, seriesList, props) {
-    let metric, y, i, newSeries, bucket, value;
+    let metric, y, i, j, idxField, newSeries, bucket, value;
 
     for (y = 0; y < target.metrics.length; y++) {
       metric = target.metrics[y];
@@ -83,6 +83,79 @@ export class ElasticResponse {
 
           break;
         }
+        case 'matrix_stats': {
+          if (esAgg.buckets.length === 0) {
+            break;
+          }
+          if ('fields' in metric.settings) {
+            const allFieldsNames = metric.settings.fields;
+            // find the index for the first field requested
+            for (i = 0; i < esAgg.buckets.length; i++) {
+              bucket = esAgg.buckets[i];
+              const stats = bucket[metric.id].fields;
+              if (stats) {
+                for (j = 0; j < stats.length; j++) {
+                  if (stats[j].name === allFieldsNames[0]) {
+                    idxField = j;
+                    break;
+                  }
+                }
+                break;
+              }
+            }
+            for (const statName in metric.meta) {
+              if (!metric.meta[statName]) {
+                continue;
+              }
+              switch (statName) {
+                case 'covariance':
+                case 'correlation': {
+                  // We want the correlation of the first metric with all the others
+                  for (const fieldName of allFieldsNames.slice(1)) {
+                    newSeries = {
+                      datapoints: [],
+                      metric: statName.substring(0, 3) + '_' + fieldName,
+                      // metric: 'cor' + fieldName,
+                      props: props,
+                      field: metric.field,
+                    };
+                    for (i = 0; i < esAgg.buckets.length; i++) {
+                      bucket = esAgg.buckets[i];
+                      if (bucket.doc_count) {
+                        if (bucket[metric.id].doc_count) {
+                          const stats = bucket[metric.id].fields[idxField][statName][fieldName];
+                          if (stats) {
+                            newSeries.datapoints.push([Math.abs(stats), bucket.key]);
+                          }
+                        }
+                      }
+                    }
+                    seriesList.push(newSeries);
+                  }
+                  break;
+                }
+                default: {
+                  newSeries = {
+                    datapoints: [],
+                    metric: statName,
+                    props: props,
+                    field: metric.field,
+                  };
+                  for (i = 0; i < esAgg.buckets.length; i++) {
+                    bucket = esAgg.buckets[i];
+                    const stats = bucket[metric.id].fields;
+                    if (stats) {
+                      newSeries.datapoints.push([stats[idxField][statName], bucket.key]);
+                    }
+                  }
+                  seriesList.push(newSeries);
+                  break;
+                }
+              }
+            }
+          }
+          break;
+        }
         default: {
           newSeries = {
             datapoints: [],
@@ -92,7 +165,6 @@ export class ElasticResponse {
           };
           for (i = 0; i < esAgg.buckets.length; i++) {
             bucket = esAgg.buckets[i];
-
             value = bucket[metric.id];
             if (value !== undefined) {
               if (value.normalized_value) {
@@ -145,7 +217,6 @@ export class ElasticResponse {
               if (!metric.meta[statName]) {
                 continue;
               }
-
               const stats = bucket[metric.id];
               // add stats that are in nested obj to top level obj
               stats.std_deviation_bounds_upper = stats.std_deviation_bounds.upper;

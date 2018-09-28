@@ -38,6 +38,11 @@ export const metricAggTypes = [
     supportsInlineScript: true,
   },
   {
+    text: 'Matrix Stats',
+    value: 'matrix_stats',
+    requiresField: false,
+  },
+  {
     text: 'Percentiles',
     value: 'percentiles',
     requiresField: true,
@@ -110,6 +115,16 @@ export const intervalOptions = [
   { text: '20m', value: '20m' },
   { text: '1h', value: '1h' },
   { text: '1d', value: '1d' },
+];
+
+export const matrixStats = [
+  { text: 'Correlation', value: 'correlation' },
+  { text: 'Count', value: 'count' },
+  { text: 'Covariance', value: 'covariance' },
+  { text: 'Kurtosis', value: 'kurtosis' },
+  { text: 'Mean', value: 'mean' },
+  { text: 'Skewness', value: 'skewness' },
+  { text: 'Variance', value: 'variance' },
 ];
 
 export const movingAvgModelOptions = [
