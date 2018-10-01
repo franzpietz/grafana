@@ -115,7 +115,12 @@ export class ElasticResponse {
       for (const propKey of _.keys(props)) {
         table.addColumn({ text: propKey, filterable: true });
       }
-      table.addColumn({ text: aggDef.field, filterable: true });
+      if (aggDef.field) {
+        table.addColumn({ text: aggDef.field, filterable: true });
+      }
+      if (aggDef.type === 'filters') {
+        table.addColumn({ text: 'Filter', filterable: true });
+      }
     }
 
     // helper func to add values to value array
@@ -182,7 +187,7 @@ export class ElasticResponse {
 
     for (aggId in aggs) {
       aggDef = _.find(target.bucketAggs, { id: aggId });
-      esAgg = aggs[aggId];
+      esAgg = _.clone(aggs[aggId]);
 
       if (!aggDef) {
         continue;
@@ -191,6 +196,15 @@ export class ElasticResponse {
       if (depth === maxDepth) {
         if (aggDef.type === 'date_histogram') {
           this.processMetrics(esAgg, target, seriesList, props);
+        } else if (aggDef.type === 'filters') {
+          const bucketArray = new Array();
+          for (const bucketKey in esAgg.buckets) {
+            const temp = _.clone(esAgg.buckets[bucketKey]);
+            temp.key = bucketKey;
+            bucketArray.push(temp);
+          }
+          esAgg.buckets = bucketArray;
+          this.processAggregationDocs(esAgg, aggDef, target, table, props);
         } else {
           this.processAggregationDocs(esAgg, aggDef, target, table, props);
         }
