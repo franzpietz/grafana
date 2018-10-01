@@ -22,6 +22,7 @@ export class ElasticMetricAggCtrl {
     const metricAggs = $scope.target.metrics;
     $scope.metricAggTypes = queryDef.getMetricAggTypes($scope.esVersion);
     $scope.extendedStats = queryDef.extendedStats;
+    $scope.matrixStats = queryDef.matrixStats;
     $scope.pipelineAggOptions = [];
     $scope.modelSettingsValues = {};
 
@@ -97,6 +98,25 @@ export class ElasticMetricAggCtrl {
           $scope.settingsLinkText = 'Stats: ' + stats.join(', ');
           break;
         }
+        case 'matrix_stats': {
+          delete $scope.agg.field;
+          if (_.keys($scope.agg.meta).length === 0) {
+            $scope.agg.meta.count = true;
+          }
+          const stats = _.reduce(
+            $scope.agg.meta,
+            (memo, val, key) => {
+              if (val) {
+                const def = _.find($scope.matrixStats, { value: key });
+                memo.push(def.text);
+              }
+              return memo;
+            },
+            []
+          );
+          $scope.settingsLinkText = 'Stats: ' + stats.join(',');
+          break;
+        }
         case 'moving_avg': {
           $scope.movingAvgModelTypes = queryDef.movingAvgModelOptions;
           $scope.modelSettings = queryDef.getMovingAvgSettings($scope.agg.settings.model, true);
@@ -107,7 +127,6 @@ export class ElasticMetricAggCtrl {
           $scope.agg.settings.size = $scope.agg.settings.size || 500;
           $scope.settingsLinkText = 'Size: ' + $scope.agg.settings.size;
           $scope.target.metrics.splice(0, $scope.target.metrics.length, $scope.agg);
-
           $scope.target.bucketAggs = [];
           break;
         }
