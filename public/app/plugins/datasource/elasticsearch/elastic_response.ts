@@ -181,6 +181,29 @@ export class ElasticResponse {
     }
   }
 
+  processAggregationCorrelation(esAgg, aggDef, target, table, props) {
+    if (table.columns.length === 0) {
+      table.addColumn({ text: 'Field', filterable: true });
+      table.addColumn({ text: 'Correlation', filterable: true });
+    }
+
+    const metric = target.metrics[0];
+    const firstFieldName = metric.settings.fields[0];
+    const fields = esAgg.buckets['*'][1].fields;
+
+    for (const field in fields) {
+      if (fields[field].name === firstFieldName) {
+        const correlationObject = fields[field].correlation;
+        const keyNames = _.keys(correlationObject);
+        for (const key in keyNames) {
+          if (keyNames[key] !== firstFieldName) {
+            table.rows.push([keyNames[key], Math.abs(correlationObject[keyNames[key]])]);
+          }
+        }
+      }
+    }
+  }
+
   processAggregationDocs(esAgg, aggDef, target, table, props) {
     // add columns
     if (table.columns.length === 0) {
@@ -268,14 +291,18 @@ export class ElasticResponse {
         if (aggDef.type === 'date_histogram') {
           this.processMetrics(esAgg, target, seriesList, props);
         } else if (aggDef.type === 'filters') {
-          const bucketArray = new Array();
-          for (const bucketKey in esAgg.buckets) {
-            const temp = _.clone(esAgg.buckets[bucketKey]);
-            temp.key = bucketKey;
-            bucketArray.push(temp);
+          if (target.metrics[0].type === 'matrix_stats') {
+            this.processAggregationCorrelation(esAgg, aggDef, target, table, props);
+          } else {
+            const bucketArray = new Array();
+            for (const bucketKey in esAgg.buckets) {
+              const temp = _.clone(esAgg.buckets[bucketKey]);
+              temp.key = bucketKey;
+              bucketArray.push(temp);
+            }
+            esAgg.buckets = bucketArray;
+            this.processAggregationDocs(esAgg, aggDef, target, table, props);
           }
-          esAgg.buckets = bucketArray;
-          this.processAggregationDocs(esAgg, aggDef, target, table, props);
         } else {
           this.processAggregationDocs(esAgg, aggDef, target, table, props);
         }

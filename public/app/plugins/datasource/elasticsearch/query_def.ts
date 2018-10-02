@@ -38,7 +38,7 @@ export const metricAggTypes = [
     supportsInlineScript: true,
   },
   {
-    text: 'Matrix Stats',
+    text: 'Correlation',
     value: 'matrix_stats',
     requiresField: false,
   },
